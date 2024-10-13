@@ -1,12 +1,11 @@
-// webpack.config.js
 const path = require('path');
 
 module.exports = {
-  entry: './src/index.js', // Entry point of your app
+  entry: './src/index.js', 
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'chatbot.js',
-    library: 'ChatbotLibrary', // Make it available globally
+    library: 'ChatbotLibrary', 
     libraryTarget: 'umd',
   },
   module: {
@@ -21,6 +20,16 @@ module.exports = {
       {
         test: /\.css$/,
         use: ['style-loader', 'css-loader'],
+      },
+      {
+        test: /\.svg$/,
+        use: {
+          loader: 'file-loader', 
+          options: {
+            name: '[path][name].[ext]', 
+            outputPath: 'assets/', 
+          },
+        },
       },
     ],
   },
