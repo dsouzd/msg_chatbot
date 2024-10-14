@@ -28,6 +28,7 @@ const Chatbot = (props) => {
   const [theme, setTheme] = useState('light');
   const [autoScroll, setAutoScroll] = useState(true);
   const [exitLoading, setExitLoading] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(true); // New state for authorization
   const chatMessagesRef = useRef(null);
 
   const toggleChat = () => {
@@ -62,11 +63,15 @@ const Chatbot = (props) => {
 
   // Initialize Chat
   const initializeChat = async () => {
+    const authorized = await getSessionId();
+    if (!authorized) {
+      return;
+    }
+
     if (selectedDepartment) {
       addBotMessage({
         content: `Welcome back! You are chatting with <strong>${selectedDepartment}</strong>. How can I assist you today?`,
       });
-      await getSessionId();
     } else {
       addInitialMessage();
     }
@@ -77,18 +82,45 @@ const Chatbot = (props) => {
     let sid = localStorage.getItem('session_id');
     if (!sid) {
       try {
-        const response = await fetch('http://localhost:8000/token'); // Update the endpoint as needed
-        const data = await response.json();
-        sid = data.token;
-        localStorage.setItem('session_id', sid);
-        setSessionId(sid);
+        const response = await fetch('http://localhost:8000/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            channelId: props.channelId,
+            token: props.token,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          sid = data.token;
+          localStorage.setItem('session_id', sid);
+          setSessionId(sid);
+          return true;
+        } else if (response.status === 401) {
+          // Unauthorized
+          addBotMessage({
+            content:
+              'You are not authorized to access the chatbot. Token generation failed. (401 Unauthorized)',
+          });
+          setIsAuthorized(false); // Disable the chat
+          return false;
+        } else {
+          // Other errors
+          addBotMessage({
+            content: 'An error occurred while obtaining session token. Please try again.',
+          });
+          return false;
+        }
       } catch (error) {
         addBotMessage({
           content: 'An error occurred while obtaining session token. Please try again.',
         });
+        return false;
       }
     } else {
       setSessionId(sid);
+      return true;
     }
   };
 
@@ -100,10 +132,7 @@ const Chatbot = (props) => {
 
   // Add User Message
   const addUserMessage = (messageContent) => {
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      { type: 'user', content: messageContent },
-    ]);
+    setMessages((prevMessages) => [...prevMessages, { type: 'user', content: messageContent }]);
     setAutoScroll(true); // Set autoScroll to true when a new message is added
   };
 
@@ -134,7 +163,7 @@ const Chatbot = (props) => {
   // Submit Question
   const submitField = async () => {
     const trimmedQuestion = question.trim();
-    if (!selectedDepartment || !trimmedQuestion) return;
+    if (!selectedDepartment || !trimmedQuestion || !isAuthorized) return;
 
     addUserMessage(trimmedQuestion);
     setQuestion('');
@@ -151,15 +180,24 @@ const Chatbot = (props) => {
         }),
       });
 
-      const data = await response.json();
-      setLoading(false);
-
-      if (data.content.toLowerCase().includes('out of my knowledge')) {
-        addConcernMessage();
+      if (response.ok) {
+        const data = await response.json();
+        if (data.content.toLowerCase().includes('out of my knowledge')) {
+          addConcernMessage();
+        } else {
+          addBotMessage({ content: data.content });
+        }
       } else {
-        addBotMessage({ content: data.content });
+        addBotMessage({
+          content: 'An error occurred while processing your request. Please try again.',
+        });
       }
     } catch (error) {
+      setLoading(false);
+      addBotMessage({
+        content: 'An error occurred while processing your request. Please try again.',
+      });
+    } finally {
       setLoading(false);
       addBotMessage({
         content: 'An error occurred while processing your request. Please try again.',
@@ -381,30 +419,34 @@ const Chatbot = (props) => {
                 <FontAwesomeIcon icon={faArrowUp} />
               </button>
             )}
-            <div className="chat-input">
-              <input
-                type="text"
-                id="question"
-                placeholder={
-                  selectedDepartment ? 'Type a message...' : 'Select a department to start...'
-                }
-                disabled={!selectedDepartment}
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') submitField();
-                }}
-              />
-              <button
-                className="btn btn-send"
-                id="submitButton"
-                onClick={submitField}
-                disabled={!selectedDepartment}
-                title="Submit Button"
-              >
-                <FontAwesomeIcon icon={faPaperPlane} />
-              </button>
-            </div>
+            {isAuthorized && (
+              <div className="chat-input">
+                <input
+                  type="text"
+                  id="question"
+                  placeholder={
+                    selectedDepartment
+                      ? 'Type a message...'
+                      : 'Select a department to start...'
+                  }
+                  disabled={!selectedDepartment}
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') submitField();
+                  }}
+                />
+                <button
+                  className="btn btn-send"
+                  id="submitButton"
+                  onClick={submitField}
+                  disabled={!selectedDepartment}
+                  title="Submit Button"
+                >
+                  <FontAwesomeIcon icon={faPaperPlane} />
+                </button>
+              </div>
+            )}
             {(loading || exitLoading) && (
               <div className="loading-overlay" id="loading">
                 <div className="spinner">
