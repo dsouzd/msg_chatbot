@@ -27,7 +27,7 @@ const Chatbot = (props) => {
   const [loading, setLoading] = useState(false);
   const [theme, setTheme] = useState('light');
   const [autoScroll, setAutoScroll] = useState(true);
-  const [exitLoading, setExitLoading] = useState(false); 
+  const [exitLoading, setExitLoading] = useState(false);
   const chatMessagesRef = useRef(null);
 
   const toggleChat = () => {
@@ -45,27 +45,14 @@ const Chatbot = (props) => {
   }, [theme]);
 
   // Scroll behavior
-  useEffect(() => {
+  const handleScroll = () => {
     const chatMessagesDiv = chatMessagesRef.current;
-
-    const handleScroll = () => {
-      if (
-        chatMessagesDiv.scrollTop + chatMessagesDiv.clientHeight <
-        chatMessagesDiv.scrollHeight
-      ) {
-        setAutoScroll(false);
-      } else {
-        setAutoScroll(true);
-      }
-    };
-
     if (chatMessagesDiv) {
-      chatMessagesDiv.addEventListener('scroll', handleScroll);
-      return () => {
-        chatMessagesDiv.removeEventListener('scroll', handleScroll);
-      };
+      const isAtBottom =
+        chatMessagesDiv.scrollHeight - chatMessagesDiv.scrollTop - chatMessagesDiv.clientHeight <= 1;
+      setAutoScroll(isAtBottom);
     }
-  }, []);
+  };
 
   useEffect(() => {
     if (autoScroll && chatMessagesRef.current) {
@@ -108,6 +95,7 @@ const Chatbot = (props) => {
   // Add Bot Message
   const addBotMessage = (message) => {
     setMessages((prevMessages) => [...prevMessages, { type: 'bot', ...message }]);
+    setAutoScroll(true); // Set autoScroll to true when a new message is added
   };
 
   // Add User Message
@@ -116,6 +104,7 @@ const Chatbot = (props) => {
       ...prevMessages,
       { type: 'user', content: messageContent },
     ]);
+    setAutoScroll(true); // Set autoScroll to true when a new message is added
   };
 
   // Handle Department Selection
@@ -273,7 +262,7 @@ const Chatbot = (props) => {
     if (chatMessagesRef.current) {
       chatMessagesRef.current.scrollTop = 0;
     }
-    setAutoScroll(true);
+    setAutoScroll(false); // Prevent auto-scrolling to bottom
   };
 
   // Toggle Theme
@@ -313,7 +302,7 @@ const Chatbot = (props) => {
                 <button
                   className="btn btn-icon"
                   onClick={endChat}
-                  aria-label="New Chat"
+                  aria-label="End Chat"
                   title="End Chat"
                 >
                   <FontAwesomeIcon icon={faComment} />
@@ -328,7 +317,12 @@ const Chatbot = (props) => {
                 </button>
               </div>
             </div>
-            <div className="chat-messages" id="chat-messages" ref={chatMessagesRef}>
+            <div
+              className="chat-messages"
+              id="chat-messages"
+              ref={chatMessagesRef}
+              onScroll={handleScroll}
+            >
               {messages.map((msg, index) => (
                 <div key={index} className={`message ${msg.type}-message`}>
                   {msg.type === 'bot' ? (

@@ -4,7 +4,7 @@ module.exports = {
   entry: './src/index.js', 
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'chatbot.js',
+    filename: 'assistme.js',
     library: 'ChatbotLibrary', 
     libraryTarget: 'umd',
   },
