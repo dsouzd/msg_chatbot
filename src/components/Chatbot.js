@@ -199,9 +199,6 @@ const Chatbot = (props) => {
       });
     } finally {
       setLoading(false);
-      addBotMessage({
-        content: 'An error occurred while processing your request. Please try again.',
-      });
     }
   };
 
