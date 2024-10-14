@@ -74,20 +74,19 @@ const Chatbot = (props) => {
   // Initialize Chat
   const initializeChat = async () => {
     if (selectedDepartment) {
-      addBotMessage(
-        `Welcome back! You are chatting with <strong>${selectedDepartment}</strong>. How can I assist you today?`
-      );
+      addBotMessage({
+        content: `Welcome back! You are chatting with <strong>${selectedDepartment}</strong>. How can I assist you today?`,
+      });
       await getSessionId();
     } else {
-      addBotMessage(`
-        <p>Welcome to MSG! I'm here to answer all your questions.</p>
-        <p>Please select your department:</p>
-        <div class="options">
-          <button class="btn btn-option" onClick={() => handleFieldSelection('1')}>Human Resources</button>
-          <button class="btn btn-option" onClick={() => handleFieldSelection('2')}>IT</button>
-          <button class="btn btn-option" onClick={() => handleFieldSelection('3')}>Finance</button>
-        </div>
-      `);
+      addBotMessage({
+        content: `<p>Welcome to MSG! I'm here to answer all your questions.</p><p>Please select your department:</p>`,
+        options: [
+          { label: 'Human Resources', value: '1' },
+          { label: 'IT', value: '2' },
+          { label: 'Finance', value: '3' },
+        ],
+      });
     }
   };
 
@@ -96,13 +95,15 @@ const Chatbot = (props) => {
     let sid = localStorage.getItem('session_id');
     if (!sid) {
       try {
-        const response = await fetch('/token'); // Update the endpoint as needed
+        const response = await fetch('http://localhost:8000/token'); // Update the endpoint as needed
         const data = await response.json();
         sid = data.token;
         localStorage.setItem('session_id', sid);
         setSessionId(sid);
       } catch (error) {
-        addBotMessage('An error occurred while obtaining session token. Please try again.');
+        addBotMessage({
+          content: 'An error occurred while obtaining session token. Please try again.',
+        });
       }
     } else {
       setSessionId(sid);
@@ -110,11 +111,8 @@ const Chatbot = (props) => {
   };
 
   // Add Bot Message
-  const addBotMessage = (messageContent) => {
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      { type: 'bot', content: messageContent },
-    ]);
+  const addBotMessage = (message) => {
+    setMessages((prevMessages) => [...prevMessages, { type: 'bot', ...message }]);
   };
 
   // Add User Message
@@ -135,16 +133,18 @@ const Chatbot = (props) => {
 
     const selectedDept = departments[choice];
     if (!selectedDept) {
-      addBotMessage('Invalid selection. Please choose a proper department.');
+      addBotMessage({
+        content: 'Invalid selection. Please choose a proper department.',
+      });
       return;
     }
 
     setSelectedDepartment(selectedDept);
     localStorage.setItem('selected_department', selectedDept);
     await getSessionId();
-    addBotMessage(
-      `You selected <strong>${selectedDept}</strong>. How can I assist you today?`
-    );
+    addBotMessage({
+      content: `You selected <strong>${selectedDept}</strong>. How can I assist you today?`,
+    });
   };
 
   // Submit Question
@@ -157,7 +157,7 @@ const Chatbot = (props) => {
     setLoading(true);
 
     try {
-      const response = await fetch('/ask', {
+      const response = await fetch('http://localhost:8000/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -173,25 +173,29 @@ const Chatbot = (props) => {
       if (data.content.toLowerCase().includes('out of my knowledge')) {
         addConcernMessage();
       } else {
-        addBotMessage(data.content);
+        addBotMessage({ content: data.content });
       }
     } catch (error) {
       setLoading(false);
-      addBotMessage('An error occurred while processing your request. Please try again.');
+      addBotMessage({
+        content: 'An error occurred while processing your request. Please try again.',
+      });
     }
   };
 
   // Add Concern Message
   const addConcernMessage = () => {
-    const concernMessage = `
-      <p>As there is no data available, we could send your question to the <strong>${selectedDepartment}</strong> team.</p>
-      <p>Your entire conversation history will be shared. As the conversation is submitted, this chat session will be closed.</p>
-      <p>Do you want to raise a concern?</p>
-      <div class="options">
-        <button class="btn btn-option" onClick={() => raiseConcern(true)}>Yes</button>
-        <button class="btn btn-option" onClick={() => raiseConcern(false)}>No</button>
-      </div>
-    `;
+    const concernMessage = {
+      content: `
+        <p>As there is no data available, we could send your question to the <strong>${selectedDepartment}</strong> team.</p>
+        <p>Your entire conversation history will be shared. As the conversation is submitted, this chat session will be closed.</p>
+        <p>Do you want to raise a concern?</p>
+      `,
+      options: [
+        { label: 'Yes', value: true },
+        { label: 'No', value: false },
+      ],
+    };
     addBotMessage(concernMessage);
   };
 
@@ -201,7 +205,7 @@ const Chatbot = (props) => {
       setLoading(true);
 
       try {
-        const response = await fetch('/raiseconcernmail', {
+        const response = await fetch('http://localhost:8000/raiseconcernmail', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -215,19 +219,23 @@ const Chatbot = (props) => {
         setLoading(false);
 
         if (data.success) {
-          addBotMessage(
-            `An email has been sent to the <strong>${selectedDepartment}</strong> team. Thank you. A new chat session has been initiated.`
-          );
+          addBotMessage({
+            content: `An email has been sent to the <strong>${selectedDepartment}</strong> team. Thank you. A new chat session has been initiated.`,
+          });
           setTimeout(endChat, 3000);
         } else {
-          addBotMessage('There was an issue raising your concern. Please try again.');
+          addBotMessage({
+            content: 'There was an issue raising your concern. Please try again.',
+          });
         }
       } catch (error) {
         setLoading(false);
-        addBotMessage('An error occurred while processing your request. Please try again.');
+        addBotMessage({
+          content: 'An error occurred while processing your request. Please try again.',
+        });
       }
     } else {
-      addBotMessage('You can continue the chat.');
+      addBotMessage({ content: 'You can continue the chat.' });
     }
   };
 
@@ -320,6 +328,25 @@ const Chatbot = (props) => {
                             __html: DOMPurify.sanitize(msg.content),
                           }}
                         />
+                        {msg.options && (
+                          <div className="options">
+                            {msg.options.map((option, idx) => (
+                              <button
+                                key={idx}
+                                className="btn btn-option"
+                                onClick={() => {
+                                  if (msg.content.includes('select your department')) {
+                                    handleFieldSelection(option.value);
+                                  } else {
+                                    raiseConcern(option.value);
+                                  }
+                                }}
+                              >
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </>
                   ) : (
