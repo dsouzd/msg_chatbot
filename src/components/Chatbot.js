@@ -27,16 +27,18 @@ const Chatbot = (props) => {
   const [loading, setLoading] = useState(false);
   const [theme, setTheme] = useState('light');
   const [autoScroll, setAutoScroll] = useState(true);
+  const [exitLoading, setExitLoading] = useState(false); 
   const chatMessagesRef = useRef(null);
 
   const toggleChat = () => {
     setIsOpen(!isOpen);
   };
 
-  // Initialize chat on component mount
   useEffect(() => {
-    initializeChat();
-  }, []);
+    if (isOpen) {
+      initializeChat();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     document.body.className = theme === 'dark' ? 'dark-mode' : '';
@@ -79,14 +81,7 @@ const Chatbot = (props) => {
       });
       await getSessionId();
     } else {
-      addBotMessage({
-        content: `<p>Welcome to MSG! I'm here to answer all your questions.</p><p>Please select your department:</p>`,
-        options: [
-          { label: 'Human Resources', value: '1' },
-          { label: 'IT', value: '2' },
-          { label: 'Finance', value: '3' },
-        ],
-      });
+      addInitialMessage();
     }
   };
 
@@ -195,6 +190,7 @@ const Chatbot = (props) => {
         { label: 'Yes', value: true },
         { label: 'No', value: false },
       ],
+      action: 'raiseConcern',
     };
     addBotMessage(concernMessage);
   };
@@ -241,16 +237,35 @@ const Chatbot = (props) => {
 
   // End Chat
   const endChat = () => {
-    setLoading(true);
+    // Show exit spinner
+    setExitLoading(true);
+
     setTimeout(() => {
+      // Reset state
       setSelectedDepartment(null);
       setSessionId(null);
       localStorage.removeItem('session_id');
       localStorage.removeItem('selected_department');
+      setQuestion('');
       setMessages([]);
       setLoading(false);
-      initializeChat();
+      setExitLoading(false);
+      // Display initial message
+      addInitialMessage();
     }, 3000);
+  };
+
+  // Add Initial Message with Department Selection
+  const addInitialMessage = () => {
+    addBotMessage({
+      content: `<p>Welcome back! Please select your department:</p>`,
+      options: [
+        { label: 'Human Resources', value: '1' },
+        { label: 'IT', value: '2' },
+        { label: 'Finance', value: '3' },
+      ],
+      action: 'selectDepartment',
+    });
   };
 
   // Scroll to Top
@@ -299,7 +314,7 @@ const Chatbot = (props) => {
                   className="btn btn-icon"
                   onClick={endChat}
                   aria-label="New Chat"
-                  title="New Chat"
+                  title="End Chat"
                 >
                   <FontAwesomeIcon icon={faComment} />
                 </button>
@@ -335,9 +350,9 @@ const Chatbot = (props) => {
                                 key={idx}
                                 className="btn btn-option"
                                 onClick={() => {
-                                  if (msg.content.includes('select your department')) {
+                                  if (msg.action === 'selectDepartment') {
                                     handleFieldSelection(option.value);
-                                  } else {
+                                  } else if (msg.action === 'raiseConcern') {
                                     raiseConcern(option.value);
                                   }
                                 }}
@@ -376,7 +391,9 @@ const Chatbot = (props) => {
               <input
                 type="text"
                 id="question"
-                placeholder="Type a message..."
+                placeholder={
+                  selectedDepartment ? 'Type a message...' : 'Select a department to start...'
+                }
                 disabled={!selectedDepartment}
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
@@ -394,7 +411,7 @@ const Chatbot = (props) => {
                 <FontAwesomeIcon icon={faPaperPlane} />
               </button>
             </div>
-            {loading && (
+            {(loading || exitLoading) && (
               <div className="loading-overlay" id="loading">
                 <div className="spinner">
                   <div className="spinner-inner"></div>
