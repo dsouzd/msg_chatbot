@@ -429,3 +429,48 @@
       }      
   }
   
+  .btn-voice {
+    background: transparent;
+    border: none;
+    color: var(--primary-color);
+    font-size: 18px;
+    margin-right: 5px;
+    cursor: pointer;
+    transition: color 0.3s, transform 0.3s;
+}
+
+.btn-voice:hover {
+    color: var(--primary-color-light);
+    transform: scale(1.1);
+}
+
+.btn-send {
+    background: linear-gradient(135deg, var(--primary-color-light), var(--primary-color-dark));
+    color: white;
+    border: none;
+    padding: 8px 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s, transform 0.3s ease;
+}
+
+.btn-send:hover {
+    background: linear-gradient(135deg, var(--primary-color-dark), var(--primary-color-light));
+    transform: scale(1.1);
+}
+
+/* Responsive adjustments for voice button */
+@media (max-width: 600px) {
+    .chat-input input {
+        font-size: 12px;
+    }
+
+    .btn-voice {
+        font-size: 16px;
+    }
+
+    .btn-send {
+        font-size: 14px;
+    }
+}

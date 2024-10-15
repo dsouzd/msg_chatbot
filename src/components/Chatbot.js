@@ -10,6 +10,8 @@ import {
     faArrowUp,
     faHeadset,
     faUserNinja,
+    faMicrophone,    // Added microphone icon
+    faMicrophoneSlash // Added microphone slash icon
 } from '@fortawesome/free-solid-svg-icons';
 import chatIcon from '../assets/chat-icon.svg';
 import logo from '../assets/msg_logo.svg';
@@ -29,6 +31,8 @@ const Chatbot = (props) => {
     const [autoScroll, setAutoScroll] = useState(true);
     const [exitLoading, setExitLoading] = useState(false);
     const [isAuthorized, setIsAuthorized] = useState(null);
+    const [isListening, setIsListening] = useState(false); // New state for voice input
+    const recognitionRef = useRef(null); // Ref for SpeechRecognition
     const chatMessagesRef = useRef(null);
 
     const toggleChat = () => {
@@ -152,9 +156,24 @@ const Chatbot = (props) => {
         }
     };
 
+    const speak = (text) => {
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            window.speechSynthesis.speak(utterance);
+        } else {
+            console.warn('SpeechSynthesis is not supported in this browser.');
+        }
+    };
+
     const addBotMessage = (message) => {
         setMessages((prevMessages) => [...prevMessages, { type: 'bot', ...message }]);
         setAutoScroll(true);
+        // Speak the message content if it's plain text
+        if (message.content && typeof message.content === 'string') {
+            const cleanText = DOMPurify.sanitize(message.content, { ALLOWED_TAGS: [] }); // Remove HTML tags
+            speak(cleanText);
+        }
     };
 
     const addUserMessage = (messageContent) => {
@@ -320,6 +339,48 @@ const Chatbot = (props) => {
         setTheme(newTheme);
     };
 
+    // Initialize SpeechRecognition
+    useEffect(() => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            recognitionRef.current = new SpeechRecognition();
+            recognitionRef.current.continuous = false;
+            recognitionRef.current.interimResults = false;
+            recognitionRef.current.lang = 'en-US';
+
+            recognitionRef.current.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                setQuestion(transcript);
+                submitField(); // Automatically submit the recognized speech
+            };
+
+            recognitionRef.current.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                setIsListening(false);
+            };
+
+            recognitionRef.current.onend = () => {
+                setIsListening(false);
+            };
+        } else {
+            console.warn('SpeechRecognition is not supported in this browser.');
+        }
+    }, []);
+
+    const startListening = () => {
+        if (recognitionRef.current && !isListening) {
+            recognitionRef.current.start();
+            setIsListening(true);
+        }
+    };
+
+    const stopListening = () => {
+        if (recognitionRef.current && isListening) {
+            recognitionRef.current.stop();
+            setIsListening(false);
+        }
+    };
+
     return (
         <div className="chatbot-container">
             <button className="chatbot-icon" onClick={toggleChat} aria-label="Open chat">
@@ -450,6 +511,14 @@ const Chatbot = (props) => {
                                     }}
                                     aria-label="Type your message here"
                                 />
+                                <button
+                                    className="btn btn-voice"
+                                    onClick={isListening ? stopListening : startListening}
+                                    aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+                                    title={isListening ? 'Stop voice input' : 'Start voice input'}
+                                >
+                                    <FontAwesomeIcon icon={isListening ? faMicrophoneSlash : faMicrophone} />
+                                </button>
                                 <button
                                     className="btn btn-send"
                                     id="submitButton"
