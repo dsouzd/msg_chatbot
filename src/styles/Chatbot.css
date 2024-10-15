@@ -56,8 +56,8 @@ body, html {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    width: 370px;
-    height: 500px;
+    width: 450px;
+    height: 600px;
     background-color: var(--background-color);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     border-radius: 10px;
@@ -219,6 +219,7 @@ body, html {
 }
 
 .bot-message .bubble {
+    text-align: left;
     background-color: var(--bot-bubble-color);
     color: black;
 }

@@ -44,7 +44,7 @@ const Chatbot = (props) => {
     };
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && !inputDisabled) {
             initializeChat();
         }
     }, [isOpen]);
@@ -456,7 +456,7 @@ const Chatbot = (props) => {
                                     <img src={logo} alt="MSG Global" title="MSG Global" />
                                 </div>
                                 <div className="chat-info">
-                                    <h4>Assit Me</h4>
+                                    <h2>Assit Me</h2>
                                     <p id="department">{selectedDepartment || 'Online'}</p>
                                 </div>
                             </div>
