@@ -423,5 +423,9 @@
     .btn-send {
       font-size: 14px;
     }
+    .btn[disabled] {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }      
   }
   
