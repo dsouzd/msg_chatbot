@@ -456,7 +456,7 @@ const Chatbot = (props) => {
                                     <img src={logo} alt="MSG Global" title="MSG Global" />
                                 </div>
                                 <div className="chat-info">
-                                    <h3>Assit Me</h3>
+                                    <h4>Assit Me</h4>
                                     <p id="department">{selectedDepartment || 'Online'}</p>
                                 </div>
                             </div>
