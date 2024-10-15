@@ -220,7 +220,7 @@ body, html {
 
 .bot-message .bubble {
     background-color: var(--bot-bubble-color);
-    color: var(--text-color);
+    color: black;
 }
 
 .user-message .bubble {
