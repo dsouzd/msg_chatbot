@@ -10,8 +10,9 @@ import {
     faArrowUp,
     faHeadset,
     faUserNinja,
-    faMicrophone,    // Added microphone icon
-    faMicrophoneSlash // Added microphone slash icon
+    faMicrophone,
+    faMicrophoneSlash,
+    faVolumeUp, // Added volume icon for reading messages aloud
 } from '@fortawesome/free-solid-svg-icons';
 import chatIcon from '../assets/chat-icon.svg';
 import logo from '../assets/msg_logo.svg';
@@ -31,14 +32,16 @@ const Chatbot = (props) => {
     const [autoScroll, setAutoScroll] = useState(true);
     const [exitLoading, setExitLoading] = useState(false);
     const [isAuthorized, setIsAuthorized] = useState(null);
-    const [isListening, setIsListening] = useState(false); // New state for voice input
-    const recognitionRef = useRef(null); // Ref for SpeechRecognition
+    const [isListening, setIsListening] = useState(false);
+    const recognitionRef = useRef(null);
     const chatMessagesRef = useRef(null);
 
+    // Toggle Chatbot Visibility
     const toggleChat = () => {
         setIsOpen(!isOpen);
     };
 
+    // Initialize Chat on Open
     useEffect(() => {
         if (isOpen) {
             initializeChat();
@@ -46,10 +49,12 @@ const Chatbot = (props) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen]);
 
+    // Apply Theme
     useEffect(() => {
         document.body.className = theme === 'dark' ? 'dark-mode' : '';
     }, [theme]);
 
+    // Handle Scroll for Auto-Scrolling
     const handleScroll = () => {
         const chatMessagesDiv = chatMessagesRef.current;
         if (chatMessagesDiv) {
@@ -65,6 +70,7 @@ const Chatbot = (props) => {
         }
     }, [messages, autoScroll]);
 
+    // Validate Token
     const validateToken = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/validate`, {
@@ -104,6 +110,7 @@ const Chatbot = (props) => {
         }
     };
 
+    // Initialize Chat
     const initializeChat = async () => {
         const authorized = await validateToken();
         if (!authorized) {
@@ -121,6 +128,7 @@ const Chatbot = (props) => {
         }
     };
 
+    // Get or Create Session ID
     const getSessionId = async () => {
         let sid = localStorage.getItem('session_id');
         if (!sid) {
@@ -156,6 +164,7 @@ const Chatbot = (props) => {
         }
     };
 
+    // Speech Synthesis Function
     const speak = (text) => {
         if ('speechSynthesis' in window) {
             const utterance = new SpeechSynthesisUtterance(text);
@@ -166,21 +175,19 @@ const Chatbot = (props) => {
         }
     };
 
+    // Add Bot Message
     const addBotMessage = (message) => {
         setMessages((prevMessages) => [...prevMessages, { type: 'bot', ...message }]);
         setAutoScroll(true);
-        // Speak the message content if it's plain text
-        if (message.content && typeof message.content === 'string') {
-            const cleanText = DOMPurify.sanitize(message.content, { ALLOWED_TAGS: [] }); // Remove HTML tags
-            speak(cleanText);
-        }
     };
 
+    // Add User Message
     const addUserMessage = (messageContent) => {
         setMessages((prevMessages) => [...prevMessages, { type: 'user', content: messageContent }]);
         setAutoScroll(true);
     };
 
+    // Handle Department Selection
     const handleFieldSelection = async (choice) => {
         const departments = {
             '1': 'Human Resources',
@@ -204,6 +211,7 @@ const Chatbot = (props) => {
         });
     };
 
+    // Submit User Question
     const submitField = async () => {
         const trimmedQuestion = question.trim();
         if (!selectedDepartment || !trimmedQuestion || !isAuthorized) return;
@@ -243,6 +251,7 @@ const Chatbot = (props) => {
         }
     };
 
+    // Add Concern Message
     const addConcernMessage = () => {
         const concernMessage = {
             content: `
@@ -259,6 +268,7 @@ const Chatbot = (props) => {
         addBotMessage(concernMessage);
     };
 
+    // Raise Concern
     const raiseConcern = async (request) => {
         if (request) {
             try {
@@ -295,6 +305,7 @@ const Chatbot = (props) => {
         }
     };
 
+    // End Chat
     const endChat = () => {
         setExitLoading(true);
 
@@ -312,6 +323,7 @@ const Chatbot = (props) => {
         }, 3000);
     };
 
+    // Add Initial Message
     const addInitialMessage = () => {
         addBotMessage({
             content: `
@@ -327,6 +339,7 @@ const Chatbot = (props) => {
         });
     };
 
+    // Scroll to Top
     const scrollToTop = () => {
         if (chatMessagesRef.current) {
             chatMessagesRef.current.scrollTop = 0;
@@ -334,6 +347,7 @@ const Chatbot = (props) => {
         setAutoScroll(false);
     };
 
+    // Toggle Theme
     const toggleTheme = () => {
         const newTheme = theme === 'light' ? 'dark' : 'light';
         setTheme(newTheme);
@@ -367,18 +381,26 @@ const Chatbot = (props) => {
         }
     }, []);
 
+    // Start Listening
     const startListening = () => {
-        if (recognitionRef.current && !isListening) {
+        if (recognitionRef.current && !isListening && selectedDepartment && isAuthorized) {
             recognitionRef.current.start();
             setIsListening(true);
         }
     };
 
+    // Stop Listening
     const stopListening = () => {
         if (recognitionRef.current && isListening) {
             recognitionRef.current.stop();
             setIsListening(false);
         }
+    };
+
+    // Handle Read Aloud
+    const handleReadAloud = (text) => {
+        const cleanText = DOMPurify.sanitize(text, { ALLOWED_TAGS: [] }); // Remove HTML tags
+        speak(cleanText);
     };
 
     return (
@@ -389,6 +411,7 @@ const Chatbot = (props) => {
             {isOpen && (
                 <div className={`chatbot-popup ${isOpen ? 'open' : ''}`}>
                     <div className="chat-container">
+                        {/* Chat Header */}
                         <div className="chat-header">
                             <div className="header-left">
                                 <div className="avatar">
@@ -412,7 +435,11 @@ const Chatbot = (props) => {
                                     className="btn btn-icon"
                                     onClick={endChat}
                                     aria-label="End Chat"
-                                    title={isAuthorized === false ? 'You are not authorized to end the chat.' : 'End Chat'}
+                                    title={
+                                        isAuthorized === false
+                                            ? 'You are not authorized to end the chat.'
+                                            : 'End Chat'
+                                    }
                                     disabled={isAuthorized === false}
                                 >
                                     <FontAwesomeIcon icon={faComment} />
@@ -427,6 +454,8 @@ const Chatbot = (props) => {
                                 </button>
                             </div>
                         </div>
+
+                        {/* Chat Messages */}
                         <div
                             className="chat-messages"
                             id="chat-messages"
@@ -468,6 +497,16 @@ const Chatbot = (props) => {
                                                         ))}
                                                     </div>
                                                 )}
+                                                {msg.content && (
+                                                    <button
+                                                        className="btn btn-read-aloud"
+                                                        onClick={() => handleReadAloud(msg.content)}
+                                                        aria-label="Read this message aloud"
+                                                        title="Read this message aloud"
+                                                    >
+                                                        <FontAwesomeIcon icon={faVolumeUp} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </>
                                     ) : (
@@ -483,6 +522,8 @@ const Chatbot = (props) => {
                                 </div>
                             ))}
                         </div>
+
+                        {/* Scroll to Top Button */}
                         {!autoScroll && (
                             <button
                                 id="scrollToTopIcon"
@@ -493,6 +534,8 @@ const Chatbot = (props) => {
                                 <FontAwesomeIcon icon={faArrowUp} />
                             </button>
                         )}
+
+                        {/* Chat Input */}
                         {isAuthorized && (
                             <div className="chat-input">
                                 <input
@@ -516,21 +559,27 @@ const Chatbot = (props) => {
                                     onClick={isListening ? stopListening : startListening}
                                     aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
                                     title={isListening ? 'Stop voice input' : 'Start voice input'}
+                                    disabled={!selectedDepartment}
                                 >
-                                    <FontAwesomeIcon icon={isListening ? faMicrophoneSlash : faMicrophone} />
+                                    <FontAwesomeIcon
+                                        icon={isListening ? faMicrophoneSlash : faMicrophone}
+                                        size="lg"
+                                    />
                                 </button>
                                 <button
                                     className="btn btn-send"
                                     id="submitButton"
                                     onClick={submitField}
-                                    disabled={!selectedDepartment}
-                                    title="Submit Button"
+                                    disabled={!selectedDepartment || question.trim() === ''}
+                                    title="Send Message"
                                     aria-label="Send message"
                                 >
-                                    <FontAwesomeIcon icon={faPaperPlane} />
+                                    <FontAwesomeIcon icon={faPaperPlane} size="lg" />
                                 </button>
                             </div>
                         )}
+
+                        {/* Loading Overlay */}
                         {exitLoading && (
                             <div className="loading-overlay" id="loading" aria-hidden="true">
                                 <div className="spinner">
@@ -539,10 +588,11 @@ const Chatbot = (props) => {
                             </div>
                         )}
                     </div>
-                </div>
+                </div> /* This closes the isOpen block */
             )}
         </div>
     );
+
 };
 
 export default Chatbot;
