@@ -168,13 +168,17 @@ const Chatbot = (props) => {
         }
     };
 
-    const addBotMessage = (message) => {
+    const addBotMessage = (message, isStreamComplete = true) => {
         const id = messageIdRef.current++;
-        setMessages((prevMessages) => [...prevMessages, { id, type: 'bot', ...message }]);
+        setMessages((prevMessages) => [
+            ...prevMessages,
+            { id, type: 'bot', ...message, streamComplete: isStreamComplete } 
+        ]);
         setAutoScroll(true);
         return id;
     };
-
+    
+    
     const addUserMessage = (messageContent) => {
         const id = messageIdRef.current++;
         setMessages((prevMessages) => [...prevMessages, { id, type: 'user', content: messageContent }]);
@@ -208,10 +212,14 @@ const Chatbot = (props) => {
     const submitField = async () => {
         const trimmedQuestion = question.trim();
         if (!selectedDepartment || !trimmedQuestion || !isAuthorized) return;
-
+    
         addUserMessage(trimmedQuestion);
         setQuestion('');
-
+    
+        const botMessageId = addBotMessage({
+            content: '<div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>'
+        }, false);  
+    
         try {
             const response = await fetch(`${API_BASE_URL}/ask`, {
                 method: 'POST',
@@ -222,31 +230,38 @@ const Chatbot = (props) => {
                     token: sessionId,
                 }),
             });
-
+    
             if (response.ok && response.body) {
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder('utf-8');
                 let done = false;
                 let content = '';
-
-                const botMessageId = addBotMessage({ content: '<div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>' });
-
+    
                 while (!done) {
                     const { value, done: doneReading } = await reader.read();
                     done = doneReading;
                     if (value) {
                         const chunk = decoder.decode(value, { stream: true });
                         content += chunk;
-                
+    
                         setMessages((prevMessages) =>
                             prevMessages.map((msg) =>
                                 msg.id === botMessageId
-                                    ? { ...msg, content: msg.content.replace(/<div.*<\/div>/, '') + chunk } 
+                                    ? { ...msg, content: msg.content.replace(/<div.*<\/div>/, '') + chunk }
                                     : msg
                             )
                         );
                     }
                 }
+    
+                setMessages((prevMessages) =>
+                    prevMessages.map((msg) =>
+                        msg.id === botMessageId
+                            ? { ...msg, streamComplete: true } 
+                            : msg
+                    )
+                );
+    
                 if (content.toLowerCase().includes('out of my knowledge')) {
                     addConcernMessage();
                 }
@@ -264,6 +279,7 @@ const Chatbot = (props) => {
             });
         }
     };
+    
 
     const addConcernMessage = () => {
         const concernMessage = {
@@ -520,7 +536,7 @@ const Chatbot = (props) => {
                                                             ))}
                                                         </div>
                                                     )}
-                                                    {isLatestBot && msg.content && (
+                                                    {isLatestBot && msg.streamComplete &&  (
                                                         <button
                                                             className={`btn btn-read-aloud ${isListening ? 'listening' : ''}`}
                                                             onClick={() => handleReadAloud(msg.content)}
@@ -609,11 +625,10 @@ const Chatbot = (props) => {
                             </div>
                         )}
                     </div>
-                </div> 
+                </div>
             )}
         </div>
     );
-    
-    };
+};
 
-    export default Chatbot;
+export default Chatbot;
