@@ -12,7 +12,7 @@ import {
     faUserNinja,
     faMicrophone,
     faMicrophoneSlash,
-    faVolumeUp, // Added volume icon for reading messages aloud
+    faVolumeUp,
 } from '@fortawesome/free-solid-svg-icons';
 import chatIcon from '../assets/chat-icon.svg';
 import logo from '../assets/msg_logo.svg';
@@ -33,29 +33,25 @@ const Chatbot = (props) => {
     const [exitLoading, setExitLoading] = useState(false);
     const [isAuthorized, setIsAuthorized] = useState(null);
     const [isListening, setIsListening] = useState(false);
-    const [permissionDenied, setPermissionDenied] = useState(false); // New state for permission handling
+    const [permissionDenied, setPermissionDenied] = useState(false);
     const recognitionRef = useRef(null);
     const chatMessagesRef = useRef(null);
+    const messageIdRef = useRef(0);
 
-    // Toggle Chatbot Visibility
     const toggleChat = () => {
         setIsOpen(!isOpen);
     };
 
-    // Initialize Chat on Open
     useEffect(() => {
         if (isOpen) {
             initializeChat();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen]);
 
-    // Apply Theme
     useEffect(() => {
         document.body.className = theme === 'dark' ? 'dark-mode' : '';
     }, [theme]);
 
-    // Handle Scroll for Auto-Scrolling
     const handleScroll = () => {
         const chatMessagesDiv = chatMessagesRef.current;
         if (chatMessagesDiv) {
@@ -71,7 +67,6 @@ const Chatbot = (props) => {
         }
     }, [messages, autoScroll]);
 
-    // Validate Token
     const validateToken = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/validate`, {
@@ -111,7 +106,6 @@ const Chatbot = (props) => {
         }
     };
 
-    // Initialize Chat
     const initializeChat = async () => {
         const authorized = await validateToken();
         if (!authorized) {
@@ -129,7 +123,6 @@ const Chatbot = (props) => {
         }
     };
 
-    // Get or Create Session ID
     const getSessionId = async () => {
         let sid = localStorage.getItem('session_id');
         if (!sid) {
@@ -165,7 +158,6 @@ const Chatbot = (props) => {
         }
     };
 
-    // Speech Synthesis Function
     const speak = (text) => {
         if ('speechSynthesis' in window) {
             const utterance = new SpeechSynthesisUtterance(text);
@@ -176,19 +168,20 @@ const Chatbot = (props) => {
         }
     };
 
-    // Add Bot Message
     const addBotMessage = (message) => {
-        setMessages((prevMessages) => [...prevMessages, { type: 'bot', ...message }]);
+        const id = messageIdRef.current++;
+        setMessages((prevMessages) => [...prevMessages, { id, type: 'bot', ...message }]);
         setAutoScroll(true);
+        return id;
     };
 
-    // Add User Message
     const addUserMessage = (messageContent) => {
-        setMessages((prevMessages) => [...prevMessages, { type: 'user', content: messageContent }]);
+        const id = messageIdRef.current++;
+        setMessages((prevMessages) => [...prevMessages, { id, type: 'user', content: messageContent }]);
         setAutoScroll(true);
+        return id;
     };
 
-    // Handle Department Selection
     const handleFieldSelection = async (choice) => {
         const departments = {
             '1': 'Human Resources',
@@ -212,13 +205,14 @@ const Chatbot = (props) => {
         });
     };
 
-    // Submit User Question
     const submitField = async () => {
         const trimmedQuestion = question.trim();
         if (!selectedDepartment || !trimmedQuestion || !isAuthorized) return;
 
         addUserMessage(trimmedQuestion);
         setQuestion('');
+
+        const botMessageId = addBotMessage({ content: '' });
 
         try {
             const response = await fetch(`${API_BASE_URL}/ask`, {
@@ -231,12 +225,30 @@ const Chatbot = (props) => {
                 }),
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                if (data.content.toLowerCase().includes('out of my knowledge')) {
+            if (response.ok && response.body) {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let done = false;
+                let content = '';
+
+                while (!done) {
+                    const { value, done: doneReading } = await reader.read();
+                    done = doneReading;
+                    if (value) {
+                        const chunk = decoder.decode(value, { stream: true });
+                        content += chunk;
+
+                        setMessages((prevMessages) =>
+                            prevMessages.map((msg) =>
+                                msg.id === botMessageId
+                                    ? { ...msg, content: msg.content + chunk }
+                                    : msg
+                            )
+                        );
+                    }
+                }
+                if (content.toLowerCase().includes('out of my knowledge')) {
                     addConcernMessage();
-                } else {
-                    addBotMessage({ content: data.content });
                 }
             } else {
                 addBotMessage({
@@ -245,6 +257,7 @@ const Chatbot = (props) => {
                 });
             }
         } catch (error) {
+            console.error('Error handling streamed response:', error);
             addBotMessage({
                 content:
                     'An error occurred while processing your request. Please refresh the page or try again later.',
@@ -252,7 +265,6 @@ const Chatbot = (props) => {
         }
     };
 
-    // Add Concern Message
     const addConcernMessage = () => {
         const concernMessage = {
             content: `
@@ -269,7 +281,6 @@ const Chatbot = (props) => {
         addBotMessage(concernMessage);
     };
 
-    // Raise Concern
     const raiseConcern = async (request) => {
         if (request) {
             try {
@@ -306,7 +317,6 @@ const Chatbot = (props) => {
         }
     };
 
-    // End Chat
     const endChat = () => {
         setExitLoading(true);
 
@@ -324,7 +334,6 @@ const Chatbot = (props) => {
         }, 3000);
     };
 
-    // Add Initial Message
     const addInitialMessage = () => {
         addBotMessage({
             content: `
@@ -340,7 +349,6 @@ const Chatbot = (props) => {
         });
     };
 
-    // Scroll to Top
     const scrollToTop = () => {
         if (chatMessagesRef.current) {
             chatMessagesRef.current.scrollTop = 0;
@@ -348,13 +356,11 @@ const Chatbot = (props) => {
         setAutoScroll(false);
     };
 
-    // Toggle Theme
     const toggleTheme = () => {
         const newTheme = theme === 'light' ? 'dark' : 'light';
         setTheme(newTheme);
     };
 
-    // Initialize SpeechRecognition
     useEffect(() => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
@@ -366,7 +372,7 @@ const Chatbot = (props) => {
             recognitionRef.current.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 setQuestion(transcript);
-                submitField(); // Automatically submit the recognized speech
+                submitField();
             };
 
             recognitionRef.current.onerror = (event) => {
@@ -391,20 +397,18 @@ const Chatbot = (props) => {
         }
     }, []);
 
-    // Start Listening
     const startListening = () => {
         if (recognitionRef.current && !isListening && selectedDepartment && isAuthorized) {
             try {
                 recognitionRef.current.start();
                 setIsListening(true);
-                setPermissionDenied(false); // Reset permission denied state
+                setPermissionDenied(false);
             } catch (error) {
                 console.error('Error starting speech recognition:', error);
             }
         }
     };
 
-    // Stop Listening
     const stopListening = () => {
         if (recognitionRef.current && isListening) {
             recognitionRef.current.stop();
@@ -412,9 +416,8 @@ const Chatbot = (props) => {
         }
     };
 
-    // Handle Read Aloud
     const handleReadAloud = (text) => {
-        const cleanText = DOMPurify.sanitize(text, { ALLOWED_TAGS: [] }); // Remove HTML tags
+        const cleanText = DOMPurify.sanitize(text, { ALLOWED_TAGS: [] });
         speak(cleanText);
     };
 
@@ -426,7 +429,6 @@ const Chatbot = (props) => {
             {isOpen && (
                 <div className={`chatbot-popup ${isOpen ? 'open' : ''}`}>
                     <div className="chat-container">
-                        {/* Chat Header */}
                         <div className="chat-header">
                             <div className="header-left">
                                 <div className="avatar">
@@ -469,8 +471,7 @@ const Chatbot = (props) => {
                                 </button>
                             </div>
                         </div>
-    
-                        {/* Chat Messages */}
+
                         <div
                             className="chat-messages"
                             id="chat-messages"
@@ -478,67 +479,74 @@ const Chatbot = (props) => {
                             onScroll={handleScroll}
                             aria-live="polite"
                         >
-                            {messages.map((msg, index) => (
-                                <div key={index} className={`message ${msg.type}-message`}>
-                                    {msg.type === 'bot' ? (
-                                        <>
-                                            <div className="avatar">
-                                                <FontAwesomeIcon icon={faHeadset} />
-                                            </div>
-                                            <div className="message-content">
-                                                <div
-                                                    className="bubble"
-                                                    dangerouslySetInnerHTML={{
-                                                        __html: DOMPurify.sanitize(msg.content),
-                                                    }}
-                                                />
-                                                {msg.options && (
-                                                    <div className="options">
-                                                        {msg.options.map((option, idx) => (
-                                                            <button
-                                                                key={idx}
-                                                                className="btn btn-option"
-                                                                onClick={() => {
-                                                                    if (msg.action === 'selectDepartment') {
-                                                                        handleFieldSelection(option.value);
-                                                                    } else if (msg.action === 'raiseConcern') {
-                                                                        raiseConcern(option.value);
-                                                                    }
-                                                                }}
-                                                                aria-label={`Option: ${option.label}`}
-                                                            >
-                                                                {option.label}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                {msg.content && (
-                                                    <button
-                                                        className={`btn btn-read-aloud ${isListening ? 'listening' : ''}`}
-                                                        onClick={() => handleReadAloud(msg.content)}
-                                                        aria-label="Read this message aloud"
-                                                        title="Read this message aloud"
-                                                    >
-                                                        <FontAwesomeIcon icon={faVolumeUp} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="message-content">
-                                                <div className="bubble">{msg.content}</div>
-                                            </div>
-                                            <div className="avatar">
-                                                <FontAwesomeIcon icon={faUserNinja} />
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            ))}
+                            {messages.map((msg) => {
+                                const lastBotIndex = [...messages]
+                                    .reverse()
+                                    .findIndex((m) => m.type === 'bot');
+                                const actualLastBotIndex = lastBotIndex === -1 ? -1 : messages.length - 1 - lastBotIndex;
+                                const isLatestBot = msg.type === 'bot' && messages.indexOf(msg) === actualLastBotIndex;
+
+                                return (
+                                    <div key={msg.id} className={`message ${msg.type}-message`}>
+                                        {msg.type === 'bot' ? (
+                                            <>
+                                                <div className="avatar">
+                                                    <FontAwesomeIcon icon={faHeadset} />
+                                                </div>
+                                                <div className="message-content">
+                                                    <div
+                                                        className="bubble"
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: DOMPurify.sanitize(msg.content),
+                                                        }}
+                                                    />
+                                                    {msg.options && (
+                                                        <div className="options">
+                                                            {msg.options.map((option, idx) => (
+                                                                <button
+                                                                    key={idx}
+                                                                    className="btn btn-option"
+                                                                    onClick={() => {
+                                                                        if (msg.action === 'selectDepartment') {
+                                                                            handleFieldSelection(option.value);
+                                                                        } else if (msg.action === 'raiseConcern') {
+                                                                            raiseConcern(option.value);
+                                                                        }
+                                                                    }}
+                                                                    aria-label={`Option: ${option.label}`}
+                                                                >
+                                                                    {option.label}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    {isLatestBot && msg.content && (
+                                                        <button
+                                                            className={`btn btn-read-aloud ${isListening ? 'listening' : ''}`}
+                                                            onClick={() => handleReadAloud(msg.content)}
+                                                            aria-label="Read this message aloud"
+                                                            title="Read this message aloud"
+                                                        >
+                                                            <FontAwesomeIcon icon={faVolumeUp} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="message-content">
+                                                    <div className="bubble">{msg.content}</div>
+                                                </div>
+                                                <div className="avatar">
+                                                    <FontAwesomeIcon icon={faUserNinja} />
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
-    
-                        {/* Scroll to Top Button */}
+
                         {!autoScroll && (
                             <button
                                 id="scrollToTopIcon"
@@ -549,8 +557,7 @@ const Chatbot = (props) => {
                                 <FontAwesomeIcon icon={faArrowUp} />
                             </button>
                         )}
-    
-                        {/* Chat Input */}
+
                         {isAuthorized && (
                             <div className="chat-input">
                                 <input
@@ -593,8 +600,7 @@ const Chatbot = (props) => {
                                 </button>
                             </div>
                         )}
-    
-                        {/* Loading Overlay */}
+
                         {exitLoading && (
                             <div className="loading-overlay" id="loading" aria-hidden="true">
                                 <div className="spinner">
@@ -603,7 +609,7 @@ const Chatbot = (props) => {
                             </div>
                         )}
                     </div>
-                </div> // Ensure closing div here for chatbot-popup
+                </div> 
             )}
         </div>
     );
