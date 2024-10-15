@@ -34,6 +34,7 @@ const Chatbot = (props) => {
     const [isAuthorized, setIsAuthorized] = useState(null);
     const [isListening, setIsListening] = useState(false);
     const [permissionDenied, setPermissionDenied] = useState(false);
+    const [inputDisabled, setInputDisabled] = useState(false);
     const recognitionRef = useRef(null);
     const chatMessagesRef = useRef(null);
     const messageIdRef = useRef(0);
@@ -215,6 +216,7 @@ const Chatbot = (props) => {
     
         addUserMessage(trimmedQuestion);
         setQuestion('');
+        setInputDisabled(true);
     
         const botMessageId = addBotMessage({
             content: '<div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>'
@@ -261,6 +263,7 @@ const Chatbot = (props) => {
                             : msg
                     )
                 );
+                setInputDisabled(false);
     
                 if (content.toLowerCase().includes('out of my knowledge')) {
                     addConcernMessage();
@@ -282,6 +285,7 @@ const Chatbot = (props) => {
     
 
     const addConcernMessage = () => {
+        setInputDisabled(true);
         const concernMessage = {
             content: `
         <p>As there is no data available, we could send your question to the <strong>${selectedDepartment}</strong> team.</p>
@@ -331,6 +335,7 @@ const Chatbot = (props) => {
         } else {
             addBotMessage({ content: 'You can continue the chat.' });
         }
+        setInputDisabled(false);
     };
 
     const endChat = () => {
@@ -451,7 +456,7 @@ const Chatbot = (props) => {
                                     <img src={logo} alt="MSG Global" title="MSG Global" />
                                 </div>
                                 <div className="chat-info">
-                                    <h2>Assistant Bot</h2>
+                                    <h3>Assit Me</h3>
                                     <p id="department">{selectedDepartment || 'Online'}</p>
                                 </div>
                             </div>
@@ -584,7 +589,7 @@ const Chatbot = (props) => {
                                             ? 'Type a message...'
                                             : 'Select a department to start...'
                                     }
-                                    disabled={!selectedDepartment}
+                                    disabled={!selectedDepartment || inputDisabled}
                                     value={question}
                                     onChange={(e) => setQuestion(e.target.value)}
                                     onKeyDown={(e) => {
@@ -597,7 +602,7 @@ const Chatbot = (props) => {
                                     onClick={isListening ? stopListening : startListening}
                                     aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
                                     title={isListening ? 'Stop voice input' : 'Start voice input'}
-                                    disabled={!selectedDepartment}
+                                    disabled={!selectedDepartment  || inputDisabled}
                                 >
                                     <FontAwesomeIcon
                                         icon={isListening ? faMicrophoneSlash : faMicrophone}
@@ -608,7 +613,7 @@ const Chatbot = (props) => {
                                     className="btn btn-send"
                                     id="submitButton"
                                     onClick={submitField}
-                                    disabled={!selectedDepartment || question.trim() === ''}
+                                    disabled={!selectedDepartment || question.trim() === ''  || inputDisabled}
                                     title="Send Message"
                                     aria-label="Send message"
                                 >
