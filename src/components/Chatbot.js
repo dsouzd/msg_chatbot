@@ -212,8 +212,6 @@ const Chatbot = (props) => {
         addUserMessage(trimmedQuestion);
         setQuestion('');
 
-        const botMessageId = addBotMessage({ content: '' });
-
         try {
             const response = await fetch(`${API_BASE_URL}/ask`, {
                 method: 'POST',
@@ -231,17 +229,19 @@ const Chatbot = (props) => {
                 let done = false;
                 let content = '';
 
+                const botMessageId = addBotMessage({ content: '<div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>' });
+
                 while (!done) {
                     const { value, done: doneReading } = await reader.read();
                     done = doneReading;
                     if (value) {
                         const chunk = decoder.decode(value, { stream: true });
                         content += chunk;
-
+                
                         setMessages((prevMessages) =>
                             prevMessages.map((msg) =>
                                 msg.id === botMessageId
-                                    ? { ...msg, content: msg.content + chunk }
+                                    ? { ...msg, content: msg.content.replace(/<div.*<\/div>/, '') + chunk } 
                                     : msg
                             )
                         );
