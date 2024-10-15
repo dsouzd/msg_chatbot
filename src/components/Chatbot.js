@@ -33,6 +33,7 @@ const Chatbot = (props) => {
     const [exitLoading, setExitLoading] = useState(false);
     const [isAuthorized, setIsAuthorized] = useState(null);
     const [isListening, setIsListening] = useState(false);
+    const [permissionDenied, setPermissionDenied] = useState(false); // New state for permission handling
     const recognitionRef = useRef(null);
     const chatMessagesRef = useRef(null);
 
@@ -370,6 +371,12 @@ const Chatbot = (props) => {
 
             recognitionRef.current.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
+                if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                    setPermissionDenied(true);
+                    addBotMessage({
+                        content: 'Microphone access was denied. Please allow access to use voice input.',
+                    });
+                }
                 setIsListening(false);
             };
 
@@ -378,14 +385,22 @@ const Chatbot = (props) => {
             };
         } else {
             console.warn('SpeechRecognition is not supported in this browser.');
+            addBotMessage({
+                content: 'Voice input is not supported in your browser.',
+            });
         }
     }, []);
 
     // Start Listening
     const startListening = () => {
         if (recognitionRef.current && !isListening && selectedDepartment && isAuthorized) {
-            recognitionRef.current.start();
-            setIsListening(true);
+            try {
+                recognitionRef.current.start();
+                setIsListening(true);
+                setPermissionDenied(false); // Reset permission denied state
+            } catch (error) {
+                console.error('Error starting speech recognition:', error);
+            }
         }
     };
 
@@ -454,7 +469,7 @@ const Chatbot = (props) => {
                                 </button>
                             </div>
                         </div>
-
+    
                         {/* Chat Messages */}
                         <div
                             className="chat-messages"
@@ -499,7 +514,7 @@ const Chatbot = (props) => {
                                                 )}
                                                 {msg.content && (
                                                     <button
-                                                        className="btn btn-read-aloud"
+                                                        className={`btn btn-read-aloud ${isListening ? 'listening' : ''}`}
                                                         onClick={() => handleReadAloud(msg.content)}
                                                         aria-label="Read this message aloud"
                                                         title="Read this message aloud"
@@ -522,7 +537,7 @@ const Chatbot = (props) => {
                                 </div>
                             ))}
                         </div>
-
+    
                         {/* Scroll to Top Button */}
                         {!autoScroll && (
                             <button
@@ -534,7 +549,7 @@ const Chatbot = (props) => {
                                 <FontAwesomeIcon icon={faArrowUp} />
                             </button>
                         )}
-
+    
                         {/* Chat Input */}
                         {isAuthorized && (
                             <div className="chat-input">
@@ -555,7 +570,7 @@ const Chatbot = (props) => {
                                     aria-label="Type your message here"
                                 />
                                 <button
-                                    className="btn btn-voice"
+                                    className={`btn btn-voice ${isListening ? 'active' : ''}`}
                                     onClick={isListening ? stopListening : startListening}
                                     aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
                                     title={isListening ? 'Stop voice input' : 'Start voice input'}
@@ -578,7 +593,7 @@ const Chatbot = (props) => {
                                 </button>
                             </div>
                         )}
-
+    
                         {/* Loading Overlay */}
                         {exitLoading && (
                             <div className="loading-overlay" id="loading" aria-hidden="true">
@@ -588,11 +603,11 @@ const Chatbot = (props) => {
                             </div>
                         )}
                     </div>
-                </div> /* This closes the isOpen block */
+                </div> // Ensure closing div here for chatbot-popup
             )}
         </div>
     );
+    
+    };
 
-};
-
-export default Chatbot;
+    export default Chatbot;

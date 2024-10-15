@@ -261,6 +261,26 @@
     transform: scale(1.1);
 }
 
+.btn-read-aloud.listening {
+    color: #e74c3c; /* Red color to indicate active listening */
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        color: #e74c3c;
+    }
+    50% {
+        transform: scale(1.2);
+        color: #c0392b;
+    }
+    100% {
+        transform: scale(1);
+        color: #e74c3c;
+    }
+}
+
 /* Chat Input */
 .chat-input {
     display: flex;
@@ -303,6 +323,11 @@
     transform: scale(1.1);
 }
 
+.btn-voice.active {
+    color: #e74c3c; /* Red color when active */
+    animation: pulse 1s infinite;
+}
+
 .btn-voice:disabled {
     color: var(--secondary-color-dark);
     cursor: not-allowed;
@@ -311,8 +336,8 @@
 
 /* Send Button */
 .btn-send {
-    background: linear-gradient(135deg, var(--primary-color-light), var(--primary-color-dark));
-    color: white;
+    background: var(--user-text-color);
+    color: var(--primary-color);
     border: none;
     padding: 8px 10px;
     border-radius: 50%;
