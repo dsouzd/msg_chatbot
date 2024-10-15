@@ -28,7 +28,7 @@ const Chatbot = (props) => {
   const [theme, setTheme] = useState('light');
   const [autoScroll, setAutoScroll] = useState(true);
   const [exitLoading, setExitLoading] = useState(false);
-  const [isAuthorized, setIsAuthorized] = useState(true); // New state for authorization
+  const [isAuthorized, setIsAuthorized] = useState(null); 
   const chatMessagesRef = useRef(null);
 
   const toggleChat = () => {
@@ -61,12 +61,50 @@ const Chatbot = (props) => {
     }
   }, [messages, autoScroll]);
 
-  // Initialize Chat
+  const validateToken = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channelId: props.channelId,
+          token: props.token,
+        }),
+      });
+
+      if (response.ok) {
+        setIsAuthorized(true);
+        return true;
+      } else if (response.status === 401) {
+        addBotMessage({
+          content:
+            'You are not authorized to access the chatbot. Token validation failed. (401 Unauthorized)',
+        });
+        setIsAuthorized(false); 
+        return false;
+      } else {
+        addBotMessage({
+          content: 'An error occurred while validating your token. Please try again.',
+        });
+        setIsAuthorized(false);
+        return false;
+      }
+    } catch (error) {
+      addBotMessage({
+        content: 'An error occurred while validating your token. Please try again.',
+      });
+      setIsAuthorized(false);
+      return false;
+    }
+  };
+
   const initializeChat = async () => {
-    const authorized = await getSessionId();
+    const authorized = await validateToken();
     if (!authorized) {
       return;
     }
+
+    await getSessionId();
 
     if (selectedDepartment) {
       addBotMessage({
@@ -77,7 +115,6 @@ const Chatbot = (props) => {
     }
   };
 
-  // Get Session ID
   const getSessionId = async () => {
     let sid = localStorage.getItem('session_id');
     if (!sid) {
@@ -85,10 +122,6 @@ const Chatbot = (props) => {
         const response = await fetch('http://localhost:8000/token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            channelId: props.channelId,
-            token: props.token,
-          }),
         });
 
         if (response.ok) {
@@ -97,16 +130,7 @@ const Chatbot = (props) => {
           localStorage.setItem('session_id', sid);
           setSessionId(sid);
           return true;
-        } else if (response.status === 401) {
-          // Unauthorized
-          addBotMessage({
-            content:
-              'You are not authorized to access the chatbot. Token generation failed. (401 Unauthorized)',
-          });
-          setIsAuthorized(false); // Disable the chat
-          return false;
         } else {
-          // Other errors
           addBotMessage({
             content: 'An error occurred while obtaining session token. Please try again.',
           });
@@ -124,19 +148,19 @@ const Chatbot = (props) => {
     }
   };
 
-  // Add Bot Message
+
   const addBotMessage = (message) => {
     setMessages((prevMessages) => [...prevMessages, { type: 'bot', ...message }]);
-    setAutoScroll(true); // Set autoScroll to true when a new message is added
+    setAutoScroll(true); 
   };
 
-  // Add User Message
+
   const addUserMessage = (messageContent) => {
     setMessages((prevMessages) => [...prevMessages, { type: 'user', content: messageContent }]);
-    setAutoScroll(true); // Set autoScroll to true when a new message is added
+    setAutoScroll(true); 
   };
 
-  // Handle Department Selection
+
   const handleFieldSelection = async (choice) => {
     const departments = {
       '1': 'Human Resources',
@@ -160,14 +184,13 @@ const Chatbot = (props) => {
     });
   };
 
-  // Submit Question
+
   const submitField = async () => {
     const trimmedQuestion = question.trim();
     if (!selectedDepartment || !trimmedQuestion || !isAuthorized) return;
 
     addUserMessage(trimmedQuestion);
     setQuestion('');
-    setLoading(true);
 
     try {
       const response = await fetch('http://localhost:8000/ask', {
@@ -193,16 +216,13 @@ const Chatbot = (props) => {
         });
       }
     } catch (error) {
-      setLoading(false);
       addBotMessage({
         content: 'An error occurred while processing your request. Please try again.',
       });
-    } finally {
-      setLoading(false);
     }
   };
 
-  // Add Concern Message
+
   const addConcernMessage = () => {
     const concernMessage = {
       content: `
@@ -219,11 +239,9 @@ const Chatbot = (props) => {
     addBotMessage(concernMessage);
   };
 
-  // Raise Concern
+
   const raiseConcern = async (request) => {
     if (request) {
-      setLoading(true);
-
       try {
         const response = await fetch('http://localhost:8000/raiseconcernmail', {
           method: 'POST',
@@ -236,7 +254,6 @@ const Chatbot = (props) => {
         });
 
         const data = await response.json();
-        setLoading(false);
 
         if (data.success) {
           addBotMessage({
@@ -249,7 +266,6 @@ const Chatbot = (props) => {
           });
         }
       } catch (error) {
-        setLoading(false);
         addBotMessage({
           content: 'An error occurred while processing your request. Please try again.',
         });
@@ -259,30 +275,30 @@ const Chatbot = (props) => {
     }
   };
 
-  // End Chat
+
   const endChat = () => {
-    // Show exit spinner
     setExitLoading(true);
 
     setTimeout(() => {
-      // Reset state
       setSelectedDepartment(null);
       setSessionId(null);
       localStorage.removeItem('session_id');
       localStorage.removeItem('selected_department');
       setQuestion('');
       setMessages([]);
-      setLoading(false);
       setExitLoading(false);
-      // Display initial message
+      setIsAuthorized(null); 
       addInitialMessage();
     }, 3000);
   };
 
-  // Add Initial Message with Department Selection
+
   const addInitialMessage = () => {
     addBotMessage({
-      content: `<p>Welcome back! Please select your department:</p>`,
+        content: `
+        <p>Welcome to msg global! I'm here to answer all your questions.</p>
+        <p>Please select your department:</p>
+      `,
       options: [
         { label: 'Human Resources', value: '1' },
         { label: 'IT', value: '2' },
@@ -292,21 +308,21 @@ const Chatbot = (props) => {
     });
   };
 
-  // Scroll to Top
+
   const scrollToTop = () => {
     if (chatMessagesRef.current) {
       chatMessagesRef.current.scrollTop = 0;
     }
-    setAutoScroll(false); // Prevent auto-scrolling to bottom
+    setAutoScroll(false);
   };
 
-  // Toggle Theme
+
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
   };
 
-  // Render component
+
   return (
     <div className="chatbot-container">
       <button className="chatbot-icon" onClick={toggleChat} aria-label="Open chat">
@@ -444,7 +460,7 @@ const Chatbot = (props) => {
                 </button>
               </div>
             )}
-            {(loading || exitLoading) && (
+            {(exitLoading) && (
               <div className="loading-overlay" id="loading">
                 <div className="spinner">
                   <div className="spinner-inner"></div>
