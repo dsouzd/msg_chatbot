@@ -15,7 +15,7 @@ import {
     faVolumeUp,
 } from '@fortawesome/free-solid-svg-icons';
 import chatIcon from '../assets/chat-icon.svg';
-import logo from '../assets/msg_logo.svg';
+import logo from '../assets/new_msg_logo.svg';
 import DOMPurify from 'dompurify';
 
 const API_BASE_URL = 'http://localhost:8000';
