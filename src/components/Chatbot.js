@@ -18,7 +18,7 @@ import chatIcon from '../assets/chat-icon.svg';
 import logo from '../assets/new_msg_logo.svg';
 import DOMPurify from 'dompurify';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:9000';
 
 const Chatbot = (props) => {
     const [isOpen, setIsOpen] = useState(false);
