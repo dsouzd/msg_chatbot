@@ -358,7 +358,7 @@ const Chatbot = (props) => {
     const addInitialMessage = () => {
         addBotMessage({
             content: `
-        <p>Welcome to MSG Global! I'm here to answer all your questions.</p>
+        <p>Welcome to msg global! I'm here to answer all your questions.</p>
         <p>Please select your department:</p>
       `,
             options: [
@@ -453,10 +453,10 @@ const Chatbot = (props) => {
                         <div className="chat-header">
                             <div className="header-left">
                                 <div className="avatar">
-                                    <img src={logo} alt="MSG Global" title="MSG Global" />
+                                    <img src={logo} alt="MSG Global" title="msg global" />
                                 </div>
                                 <div className="chat-info">
-                                    <h2>Assit Me</h2>
+                                    <h2>AssistMe</h2>
                                     <p id="department">{selectedDepartment || 'Online'}</p>
                                 </div>
                             </div>
